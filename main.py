@@ -1,10 +1,11 @@
+import time
 import numpy as np
 import torch
 import config
 import argparse
 import random
 import os
-from utils import get_folder_name
+from utils import get_base_folder_name, get_model_path_filename
 from models import UNet, AttentionUNet
 from dataset import get_train_test_datasets
 from train import train
@@ -18,14 +19,18 @@ def set_seed(seed=42):
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
 
-def get_model():
+def get_models():
     """Initialize the chosen model."""
-    if config.MODEL_TYPE == "unet":
-        return UNet(config.INPUT_SIZE[0], config.NUM_LAYERS, config.NUM_FIRST_FILTERS).to(config.DEVICE)
-    elif config.MODEL_TYPE == "attention_unet":
-        return AttentionUNet(config.INPUT_SIZE[0], config.NUM_LAYERS, config.NUM_FIRST_FILTERS).to(config.DEVICE)
-    else:
-        raise ValueError(f"Invalid model type: {config.MODEL_TYPE}")
+    models = {}
+    if config.MODEL_TYPE not in ["unet", "attention_unet", "all"]:
+        raise ValueError("Invalid model type: {config.MODEL_TYPE}")
+
+    if config.MODEL_TYPE in ["unet", "all"]:
+        models["unet"] = UNet(config.INPUT_SIZE[0], config.NUM_LAYERS, config.NUM_FIRST_FILTERS).to(config.DEVICE)
+    if config.MODEL_TYPE in ["attention_unet", "all"]:
+        models["attention_unet"] = AttentionUNet(config.INPUT_SIZE[0], config.NUM_LAYERS, config.NUM_FIRST_FILTERS).to(config.DEVICE)
+    print(models.keys())
+    return models
 
 def main():
     parser = argparse.ArgumentParser(description="Train or Test a UNet Model")
@@ -39,38 +44,68 @@ def main():
 
     set_seed(config.SEED)
 
-    foldername = get_folder_name()
+    os.chdir("test_models")
 
     if args.train:
-        os.makedirs(foldername, exist_ok=True)
-        os.chdir(foldername)
 
-        train_loader, test_loader = get_train_test_datasets()
+        training_times = {}
 
-        # Load model
-        model = get_model()
+        train_loader, test_loader, _ = get_train_test_datasets()
+        models = get_models()
 
-        # Define loss function
-        if config.LOSS_FUNCTION == "mse":
-            criterion = torch.nn.MSELoss()
-        elif config.LOSS_FUNCTION == "mae":
-            criterion = torch.nn.L1Loss()
-        else:
-            raise ValueError(f"Invalid loss function: {config.LOSS_FUNCTION}")
+        base_folder = get_base_folder_name(config.MODEL_TYPE)
+        os.makedirs(base_folder, exist_ok=True)
+        os.chdir(base_folder)
 
-        # Define optimizer
-        if config.OPTIMIZER == "adam":
-            optimizer = torch.optim.Adam(model.parameters(), lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY)
-        elif config.OPTIMIZER == "sgd":
-            optimizer = torch.optim.SGD(model.parameters(), lr=config.LEARNING_RATE, momentum=0.9, weight_decay=config.WEIGHT_DECAY)
-        else:
-            raise ValueError(f"Invalid optimizer: {config.OPTIMIZER}")
+        for model_name, model in models.items():
+            print(f"\nTraining {model_name}...\n")
 
-        # Learning rate scheduler
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=config.SCHEDULER_STEP_SIZE, gamma=config.SCHEDULER_GAMMA)
+            # Create subdirectory for each model
+            os.makedirs(model_name, exist_ok=True)
+            os.chdir(model_name)
 
-        train(model, train_loader, test_loader, criterion, optimizer, scheduler)
-        # test(model, test_loader, criterion, config)
+            # Define loss function
+            if config.LOSS_FUNCTION == "mse":
+                criterion = torch.nn.MSELoss()
+            elif config.LOSS_FUNCTION == "mae":
+                criterion = torch.nn.L1Loss()
+            else:
+                raise ValueError(f"Invalid loss function: {config.LOSS_FUNCTION}")
+
+            # Define optimizer
+            if config.OPTIMIZER == "adam":
+                optimizer = torch.optim.Adam(model.parameters(), lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY)
+            elif config.OPTIMIZER == "sgd":
+                optimizer = torch.optim.SGD(model.parameters(), lr=config.LEARNING_RATE, momentum=0.9, weight_decay=config.WEIGHT_DECAY)
+            else:
+                raise ValueError(f"Invalid optimizer: {config.OPTIMIZER}")
+
+            # Learning rate scheduler
+            scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=config.SCHEDULER_STEP_SIZE, gamma=config.SCHEDULER_GAMMA)
+
+            # Train model
+            start_time = time.time()
+            train(model_name, model, train_loader, test_loader, criterion, optimizer, scheduler)
+            end_time = time.time()
+
+            training_times[model_name] = end_time - start_time
+            # Move back to base directory
+            os.chdir("..")
+
+        print(training_times)
+
+        os.chdir("..")
+
+    if args.test:
+        _, test_loader, test_loader_notnorm = get_train_test_datasets()
+
+        base_folder = get_base_folder_name(config.MODEL_TYPE)
+        os.chdir(base_folder)
+
+        models = get_models()
+        for model_folder in models.keys():
+            models[model_folder].load_state_dict(torch.load(os.path.join(model_folder, get_model_path_filename(model_folder))))
+        test(models, test_loader, test_loader_notnorm)
 
 if __name__ == "__main__":
     main()

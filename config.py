@@ -4,11 +4,11 @@ import torch
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Metadata
-DATE = '01232025'
-ITERATION = 0
+DATE = '01262025'
+ITERATION = 2
 
 # Data settings
-NORMALIZATION = False
+NORMALIZATION = True
 DENORMALIZATION = False
 TRAINING_DATA_PATH = "../data/Training_Perlin40k_Pperlin50k_mat2gray.mat"
 TESTING_DATA_PATH = "../data/Testing_Perlin5k_Pperlin50k_mat2gray_2.mat"
@@ -20,7 +20,7 @@ NUM_WORKERS = 4  # Adjust based on your system's resources
 INPUT_SIZE = (1, 16, 128)
 
 # Model settings
-MODEL_TYPE = "attention_unet"  # Options: "unet", "attention_unet"
+MODEL_TYPE = "all"  # Options: "unet", "attention_unet", "all"
 NUM_LAYERS = 4
 NUM_FIRST_FILTERS = 4
 

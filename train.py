@@ -4,7 +4,7 @@ from utils import get_model_path_filename
 import numpy as np
 import matplotlib.pyplot as plt
 
-def save_loss_graphs(training_loss_epochs, testing_loss_epochs):
+def save_loss_graphs(model_name, training_loss_epochs, testing_loss_epochs):
     x_labels = np.arange(1, config.EPOCHS)
     training_losses = training_loss_epochs[1:]  # Ignore 1st epoch
     testing_losses = testing_loss_epochs[1:]
@@ -15,10 +15,9 @@ def save_loss_graphs(training_loss_epochs, testing_loss_epochs):
     plt.ylabel("Loss")
     plt.legend()
 
-    model_name = None
-    if config.MODEL_TYPE == 'unet':
+    if model_name == 'unet':
         model_name = "conv_UNet"
-    elif config.MODEL_TYPE == 'attention_unet':
+    elif model_name == 'attention_unet':
         model_name = "conv_att_UNet"
 
     plt.savefig(f"{model_name}_training_testing_rmse_graph.png")
@@ -27,7 +26,7 @@ def save_loss_graphs(training_loss_epochs, testing_loss_epochs):
     np.save(f'{model_name}_testing_losses.npy', np.array(testing_losses))
 
 
-def train(model, train_loader, test_loader, criterion, optimizer, scheduler):
+def train(model_name, model, train_loader, test_loader, criterion, optimizer, scheduler):
 
     training_loss_epochs = []
     testing_loss_epochs = []
@@ -70,8 +69,10 @@ def train(model, train_loader, test_loader, criterion, optimizer, scheduler):
         training_loss_epochs.append(training_loss_epoch)
         testing_loss_epochs.append(testing_loss_epoch)
 
-    torch.save(model.state_dict(), get_model_path_filename())
+    torch.save(model.state_dict(), get_model_path_filename(model_name))
 
-    save_loss_graphs(training_loss_epochs, testing_loss_epochs)
+    save_loss_graphs(model_name, training_loss_epochs, testing_loss_epochs)
 
     print("Training complete!")
+
+    return model
