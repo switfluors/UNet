@@ -104,7 +104,8 @@ def main():
 
         models = get_models()
         for model_folder in models.keys():
-            models[model_folder].load_state_dict(torch.load(os.path.join(model_folder, get_model_path_filename(model_folder))))
+            models[model_folder].load_state_dict(
+                torch.load(os.path.join(model_folder, get_model_path_filename(model_folder)), weights_only=False))
         test(models, test_loader, test_loader_notnorm)
 
 if __name__ == "__main__":

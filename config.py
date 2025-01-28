@@ -4,11 +4,11 @@ import torch
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Metadata
-DATE = '01262025'
-ITERATION = 2
+DATE = '01272025'
+ITERATION = 0
 
 # Data settings
-NORMALIZATION = True
+NORMALIZATION = False
 DENORMALIZATION = False
 TRAINING_DATA_PATH = "../data/Training_Perlin40k_Pperlin50k_mat2gray.mat"
 TESTING_DATA_PATH = "../data/Testing_Perlin5k_Pperlin50k_mat2gray_2.mat"

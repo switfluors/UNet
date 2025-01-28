@@ -1,26 +1,13 @@
+import time
 import torch
 import numpy as np
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 import config
 
-
-def test(models, test_loader, test_loader_notnorm):
-    """Evaluates both models on the test dataset and stores results."""
-
-    device = config.DEVICE
-
-    print(models.keys())
-
-    # Set models to evaluation mode
-    for model in models.values():
-        model.eval()
-
+def prepare_arrays(test_loader):
     sptimg4_test = test_loader.dataset.X
     tbg4_test = test_loader.dataset.Y
-
-    print(sptimg4_test.shape)
-    print(tbg4_test.shape)
 
     # Determine number of test samples
     numSpectra = len(test_loader.dataset)  # Get total dataset length
@@ -36,28 +23,191 @@ def test(models, test_loader, test_loader_notnorm):
 
     # Compute mean background (assuming `tbg4_test` is from test dataset)
     mean_background = np.mean(tbg4_test, axis=0)
-    print("Mean bg:", mean_background.shape)
+
+    return numSpectra, sptimg4_test, tbg4_test, YPred, Predictspe, YPred2, Predictspe2, Oldsptimg, mean_background
+
+def save_rmse_figures(dataSets):
+    # First figure
+    plt.figure(figsize=(12, 8))
+
+    # Subplot titles
+    titles = [
+        'Conv. Att. U-Net Background RMSE',
+        'Conv. Att. U-Net Spectra RMSE',
+        'Conventional U-net Background RMSE',
+        'Conventional U-net Spectra RMSE',
+        'Old Method Background RMSE',
+        'Old Method Spectra RMSE'
+    ]
+
+    # Create subplots for each RMSE
+    for i, rmse_data in enumerate(
+            dataSets):
+        plt.subplot(3, 2, i + 1)
+        plt.hist(rmse_data, bins=30, color='blue', alpha=0.7)
+        plt.title(titles[i])
+        plt.xlabel('RMSE Value')
+        plt.ylabel('Counts')
+        plt.grid(True)
+
+    plt.suptitle('Comparison of RMSE Across Different Methods', fontsize=16)
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.savefig("rmse_figure_1.png")
+    # plt.show()  # Display the figure
+
+    # Second figure (with filtering)
+    plt.figure(figsize=(12, 8))
+
+    filteredDataSets = [data[data <= 15] for data in dataSets]  # Filter values greater than 15
+
+    # Define global bin edges for the range 0-15
+    if not config.NORMALIZATION:
+        binEdges = np.linspace(0, 15, 31)  # 30 bins from 0 to 15
+    else:
+        binEdges = np.linspace(0, 1, 31)
+
+    # Loop through each filtered dataset to create subplot histograms with mean and std annotations
+    for i, filtered_data in enumerate(filteredDataSets):
+        plt.subplot(3, 2, i + 1)  # Set subplot position
+        plt.hist(filtered_data, bins=binEdges, color='green', alpha=0.7)  # Plot histogram with defined bin edges
+
+        meanVal = np.mean(filtered_data)
+        stdVal = np.std(filtered_data)
+
+        # Mean and standard deviation lines
+        plt.axvline(meanVal, color='red', linestyle='-', linewidth=2, label=f'Mean: {meanVal:.2f}')
+        plt.axvline(meanVal + stdVal, color='blue', linestyle='--', linewidth=2,
+                    label=f'+1 Std: {meanVal + stdVal:.2f}')
+        plt.axvline(meanVal - stdVal, color='blue', linestyle='--', linewidth=2,
+                    label=f'-1 Std: {meanVal - stdVal:.2f}')
+
+        plt.title(titles[i])
+        plt.xlabel('RMSE Value')
+        plt.ylabel('Counts')
+        plt.legend()  # Show legend
+        plt.grid(True)
+
+    # Super title for the figure
+    plt.suptitle('Comparison of RMSE Across Different Methods (Filtered)', fontsize=16)
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.savefig("rmse_figure_2.png")
+    # plt.show()
+
+
+def save_rep_samples(model_name, test_loader_notnorm, YPred, tbg4_test, sptimg4_test):
+    indices = [0, 1, 2, 3, 4]
+
+    fig, axes = plt.subplots(5, 5, figsize=(50, 15))
+    fig.suptitle(
+        '5 Representative Predicted Background, Ground Truth, Predicted Spectral, and Original Speimg Image Samples')
+
+    sptimg4_test_notnorm = test_loader_notnorm.dataset.X
+    tbg4_test_notnorm = test_loader_notnorm.dataset.Y
+
+    tbg4_test_max, tbg4_test_min = np.max(tbg4_test_notnorm), np.min(tbg4_test_notnorm)
+    sptimg4_test_max, sptimg4_test_min = np.max(sptimg4_test_notnorm), np.min(sptimg4_test_notnorm)
+
+    # Loop to plot all graphs
+    for i, idx in enumerate(indices):
+        predicted_background = YPred[idx, :, :].transpose(1, 0)
+        ground_truth = tbg4_test[idx, :, :].transpose(1, 0)
+        original_speimg = sptimg4_test[idx, :, :].transpose(1, 0)
+        # ground_truth_spectral_image = gt_spt_test[idx, :, :].transpose(1, 0)
+
+        if config.NORMALIZATION and config.DENORMALIZATION:
+            ground_truth = ground_truth * (tbg4_test_max - tbg4_test_min) + tbg4_test_min
+            predicted_background = predicted_background * (sptimg4_test_max - sptimg4_test_min) + sptimg4_test_min
+            original_speimg = original_speimg * (sptimg4_test_max - sptimg4_test_min) + sptimg4_test_min
+
+        predicted_spectral_image = original_speimg - predicted_background
+        ground_truth_spectral_image = original_speimg - ground_truth
+
+        if config.NORMALIZATION and config.DENORMALIZATION:
+            predicted_spectral_image = (predicted_spectral_image - np.min(predicted_spectral_image)) / \
+                                       (np.max(predicted_spectral_image) - np.min(predicted_spectral_image) + 1e-8)
+        if idx == 1:
+            print("Predicted Background {}".format(idx))
+            print("Minimum Intensity: {}".format(np.min(predicted_background)))
+            print("Maximum Intensity: {}".format(np.max(predicted_background)))
+
+            print("Ground Truth Background {}".format(idx))
+            print("Minimum Intensity: {}".format(np.min(ground_truth)))
+            print("Maximum Intensity: {}".format(np.max(ground_truth)))
+
+            print("Original Spectral Image {}".format(idx))
+            print("Minimum Intensity: {}".format(np.min(original_speimg)))
+            print("Maximum Intensity: {}".format(np.max(original_speimg)))
+
+        ax = axes[i, 0]
+        ax.imshow(predicted_background, aspect='auto', cmap='gray')
+        ax.set_title(f'Predicted Background {idx}')
+
+        ax = axes[i, 1]
+        ax.imshow(ground_truth, aspect='auto', cmap='gray')
+        ax.set_title(f'Ground Truth Background {idx}')
+
+        ax = axes[i, 2]
+        ax.imshow(predicted_spectral_image, aspect='auto', cmap='gray')
+        ax.set_title(f'Predicted Spectral Image {idx}')
+
+        ax = axes[i, 3]
+        ax.imshow(ground_truth_spectral_image, aspect='auto', cmap='gray')
+        ax.set_title(f'Ground Truth Spectral Image {idx}')
+
+        ax = axes[i, 4]
+        ax.imshow(original_speimg, aspect='auto', cmap='gray')
+        ax.set_title(f'Original Spectral Image {idx}')
+
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95], pad=3.0)
+    if model_name == "unet":
+        plt.savefig("unet/convUNet_5_rep_samples.png")
+    elif model_name == "attention_unet":
+        plt.savefig("attention_unet/convUNet_Att_5_rep_samples.png")
+    pass
+
+
+def test(models, test_loader, test_loader_notnorm):
+    """Evaluates both models on the test dataset and stores results."""
+
+    (numSpectra, sptimg4_test, tbg4_test, YPred, Predictspe,
+     YPred2, Predictspe2, Oldsptimg, mean_background) = prepare_arrays(test_loader)
+
+    # Set models to evaluation mode
+    for model in models.values():
+        model.eval()
+
+    device = config.DEVICE
+
+    inference_time_unet = 0
+    inference_time_unet_att = 0
 
     for n in range(numSpectra):
         input = torch.tensor(sptimg4_test[n:n + 1], dtype=torch.float32).to(device)
 
+        start_time = time.time()
         conv_UNet_output = models["unet"](input).detach().cpu().numpy()
+        end_time = time.time()
+        inference_time_unet += end_time - start_time
+
         YPred[n, :, :, :] = conv_UNet_output
         Predictspe[n, :, :, :] = sptimg4_test[n, :, :, :] - YPred[n, :, :, :]
 
+        start_time = time.time()
         conv_att_UNet_output = models["attention_unet"](input).detach().cpu().numpy()
+        end_time = time.time()
+        inference_time_unet_att += end_time - start_time
         YPred2[n, :, :, :] = conv_att_UNet_output
         Predictspe2[n, :, :, :] = sptimg4_test[n, :, :, :] - YPred2[n, :, :, :]
 
         Oldsptimg[n, :, :, :] = sptimg4_test[n, :, :, :] - mean_background
 
+    print("Average inference time (in seconds): ", {'unet': inference_time_unet / numSpectra, 'attention_unet': inference_time_unet_att / numSpectra})
     YPred = np.squeeze(YPred, axis=1)
     Predictspe = np.squeeze(Predictspe, axis=1)
     YPred2 = np.squeeze(YPred2, axis=1)
     Predictspe2 = np.squeeze(Predictspe2, axis=1)
     Oldsptimg = np.squeeze(Oldsptimg, axis=1)
     mean_background = np.squeeze(mean_background, axis=0)
-
 
     sptn = np.mean(Predictspe[:, :, 6:10], axis=2)
 
@@ -126,200 +276,11 @@ def test(models, test_loader, test_loader_notnorm):
 
     # Plotting figures
 
-    # First figure
-    plt.figure(figsize=(12, 8))
-
-    # Subplot titles
-    titles = [
-        'Conv. Att. U-Net Background RMSE',
-        'Conv. Att. U-Net Spectra RMSE',
-        'Conventional U-net Background RMSE',
-        'Conventional U-net Spectra RMSE',
-        'Old Method Background RMSE',
-        'Old Method Spectra RMSE'
-    ]
-
-    # Create subplots for each RMSE
-    for i, rmse_data in enumerate(
-            [ConvU_Att_BG_RMSE, ConvU_Att_SPE_RMSE, ConvU_BG_RMSE, ConvU_SPE_RMSE, Old_BG_RMSE, Old_SPE_RMSE]):
-        plt.subplot(3, 2, i + 1)
-        plt.hist(rmse_data, bins=30, color='blue', alpha=0.7)
-        plt.title(titles[i])
-        plt.xlabel('RMSE Value')
-        plt.ylabel('Counts')
-        plt.grid(True)
-
-    plt.suptitle('Comparison of RMSE Across Different Methods', fontsize=16)
-    plt.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.savefig("rmse_figure_1.png")
-    # plt.show()  # Display the figure
-
-    # Second figure (with filtering)
-    plt.figure(figsize=(12, 8))
-
     dataSets = [ConvU_Att_BG_RMSE, ConvU_Att_SPE_RMSE, ConvU_BG_RMSE, ConvU_SPE_RMSE, Old_BG_RMSE, Old_SPE_RMSE]
-    filteredDataSets = [data[data <= 15] for data in dataSets]  # Filter values greater than 15
-
-    # Define global bin edges for the range 0-15
-    if not config.NORMALIZATION:
-        binEdges = np.linspace(0, 15, 31)  # 30 bins from 0 to 15
-    else:
-        binEdges = np.linspace(0, 1, 31)
-
-    # Loop through each filtered dataset to create subplot histograms with mean and std annotations
-    for i, filtered_data in enumerate(filteredDataSets):
-        plt.subplot(3, 2, i + 1)  # Set subplot position
-        plt.hist(filtered_data, bins=binEdges, color='green', alpha=0.7)  # Plot histogram with defined bin edges
-
-        meanVal = np.mean(filtered_data)
-        stdVal = np.std(filtered_data)
-
-        # Mean and standard deviation lines
-        plt.axvline(meanVal, color='red', linestyle='-', linewidth=2, label=f'Mean: {meanVal:.2f}')
-        plt.axvline(meanVal + stdVal, color='blue', linestyle='--', linewidth=2,
-                    label=f'+1 Std: {meanVal + stdVal:.2f}')
-        plt.axvline(meanVal - stdVal, color='blue', linestyle='--', linewidth=2,
-                    label=f'-1 Std: {meanVal - stdVal:.2f}')
-
-        plt.title(titles[i])
-        plt.xlabel('RMSE Value')
-        plt.ylabel('Counts')
-        plt.legend()  # Show legend
-        plt.grid(True)
-
-    # Super title for the figure
-    plt.suptitle('Comparison of RMSE Across Different Methods (Filtered)', fontsize=16)
-    plt.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.savefig("rmse_figure_2.png")
-    # plt.show()
+    save_rmse_figures(dataSets)
 
     print("Conventional UNet")
-
-    indices = [0, 1, 2, 3, 4]
-
-    fig, axes = plt.subplots(5, 5, figsize=(50, 15))
-    fig.suptitle(
-        '5 Representative Predicted Background, Ground Truth, Predicted Spectral, and Original Speimg Image Samples')
-
-    sptimg4_test_notnorm = test_loader_notnorm.dataset.X
-    tbg4_test_notnorm = test_loader_notnorm.dataset.Y
-
-    tbg4_test_max, tbg4_test_min = np.max(tbg4_test_notnorm), np.min(tbg4_test_notnorm)
-    sptimg4_test_max, sptimg4_test_min = np.max(sptimg4_test_notnorm), np.min(sptimg4_test_notnorm)
-
-
-    # Loop to plot all graphs
-    for i, idx in enumerate(indices):
-        predicted_background = YPred[idx, :, :].transpose(1, 0)
-        ground_truth = tbg4_test[idx, :, :].transpose(1, 0)
-        original_speimg = sptimg4_test[idx, :, :].transpose(1, 0)
-        # ground_truth_spectral_image = gt_spt_test[idx, :, :].transpose(1, 0)
-
-        if config.NORMALIZATION and config.DENORMALIZATION:
-            ground_truth = ground_truth * (tbg4_test_max - tbg4_test_min) + tbg4_test_min
-            predicted_background = predicted_background * (sptimg4_test_max - sptimg4_test_min) + sptimg4_test_min
-            original_speimg = original_speimg * (sptimg4_test_max - sptimg4_test_min) + sptimg4_test_min
-
-        predicted_spectral_image = original_speimg - predicted_background
-        ground_truth_spectral_image = original_speimg - ground_truth
-
-        if config.NORMALIZATION and config.DENORMALIZATION:
-            predicted_spectral_image = (predicted_spectral_image - np.min(predicted_spectral_image)) / \
-                                       (np.max(predicted_spectral_image) - np.min(predicted_spectral_image) + 1e-8)
-        if idx == 1:
-            print("Predicted Background {}".format(idx))
-            print("Minimum Intensity: {}".format(np.min(predicted_background)))
-            print("Maximum Intensity: {}".format(np.max(predicted_background)))
-
-            print("Ground Truth Background {}".format(idx))
-            print("Minimum Intensity: {}".format(np.min(ground_truth)))
-            print("Maximum Intensity: {}".format(np.max(ground_truth)))
-
-            print("Original Spectral Image {}".format(idx))
-            print("Minimum Intensity: {}".format(np.min(original_speimg)))
-            print("Maximum Intensity: {}".format(np.max(original_speimg)))
-
-        ax = axes[i, 0]
-        ax.imshow(predicted_background, aspect='auto', cmap='gray')
-        ax.set_title(f'Predicted Background {idx}')
-
-        ax = axes[i, 1]
-        ax.imshow(ground_truth, aspect='auto', cmap='gray')
-        ax.set_title(f'Ground Truth Background {idx}')
-
-        ax = axes[i, 2]
-        ax.imshow(predicted_spectral_image, aspect='auto', cmap='gray')
-        ax.set_title(f'Predicted Spectral Image {idx}')
-
-        ax = axes[i, 3]
-        ax.imshow(ground_truth_spectral_image, aspect='auto', cmap='gray')
-        ax.set_title(f'Ground Truth Spectral Image {idx}')
-
-        ax = axes[i, 4]
-        ax.imshow(original_speimg, aspect='auto', cmap='gray')
-        ax.set_title(f'Original Spectral Image {idx}')
-
-    plt.tight_layout(rect=[0, 0.03, 1, 0.95], pad=3.0)
-    plt.savefig("unet/convUNet_5_rep_samples.png")
+    save_rep_samples("unet", test_loader_notnorm, YPred, tbg4_test, sptimg4_test)
 
     print("Conventional UNet with Attention")
-
-    fig, axes = plt.subplots(5, 5, figsize=(50, 15))
-    fig.suptitle(
-        '5 Representative Predicted Background, Ground Truth, Predicted Spectral, and Original Speimg Image Samples')
-
-    # Loop to plot all graphs
-    for i, idx in enumerate(indices):
-        predicted_background = YPred2[idx, :, :].transpose(1, 0)
-        ground_truth = tbg4_test[idx, :, :].transpose(1, 0)
-        original_speimg = sptimg4_test[idx, :, :].transpose(1, 0)
-        # ground_truth_spectral_image = gt_spt_test[idx, :, :].transpose(1, 0)
-
-        if config.NORMALIZATION and config.DENORMALIZATION:
-            ground_truth = ground_truth * (tbg4_test_max - tbg4_test_min) + tbg4_test_min
-            predicted_background = predicted_background * (sptimg4_test_max - sptimg4_test_min) + sptimg4_test_min
-            original_speimg = original_speimg * (sptimg4_test_max - sptimg4_test_min) + sptimg4_test_min
-
-        predicted_spectral_image = original_speimg - predicted_background
-        ground_truth_spectral_image = original_speimg - ground_truth
-
-        if config.NORMALIZATION and config.DENORMALIZATION:
-            predicted_spectral_image = (predicted_spectral_image - np.min(predicted_spectral_image)) / \
-                                       (np.max(predicted_spectral_image) - np.min(predicted_spectral_image) + 1e-8)
-
-        if idx == 1:
-            print("Predicted Background {}".format(idx))
-            print("Minimum Intensity: {}".format(np.min(predicted_background)))
-            print("Maximum Intensity: {}".format(np.max(predicted_background)))
-
-            print("Ground Truth Background {}".format(idx))
-            print("Minimum Intensity: {}".format(np.min(ground_truth)))
-            print("Maximum Intensity: {}".format(np.max(ground_truth)))
-
-            print("Original Spectral Image {}".format(idx))
-            print("Minimum Intensity: {}".format(np.min(original_speimg)))
-            print("Maximum Intensity: {}".format(np.max(original_speimg)))
-
-        ax = axes[i, 0]
-        ax.imshow(predicted_background, aspect='auto', cmap='gray')
-        ax.set_title(f'Predicted Background {idx}')
-
-        ax = axes[i, 1]
-        ax.imshow(ground_truth, aspect='auto', cmap='gray')
-        ax.set_title(f'Ground Truth Background {idx}')
-
-        ax = axes[i, 2]
-        ax.imshow(predicted_spectral_image, aspect='auto', cmap='gray')
-        ax.set_title(f'Predicted Spectral Image {idx}')
-
-        ax = axes[i, 3]
-        ax.imshow(ground_truth_spectral_image, aspect='auto', cmap='gray')
-        ax.set_title(f'Ground Truth Spectral Image {idx}')
-
-        ax = axes[i, 4]
-        ax.imshow(original_speimg, aspect='auto', cmap='gray')
-        ax.set_title(f'Original Spectral Image {idx}')
-
-    plt.tight_layout(rect=[0, 0.03, 1, 0.95], pad=3.0)
-    plt.savefig("attention_unet/convUNet_Att_5_rep_samples.png")
-    # plt.show()
+    save_rep_samples("attention_unet", test_loader_notnorm, YPred2, tbg4_test, sptimg4_test)
