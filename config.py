@@ -8,7 +8,7 @@ DATE = '01272025'
 ITERATION = 0
 
 # Data settings
-NORMALIZATION = False
+NORMALIZATION = True
 DENORMALIZATION = False
 TRAINING_DATA_PATH = "../data/Training_Perlin40k_Pperlin50k_mat2gray.mat"
 TESTING_DATA_PATH = "../data/Testing_Perlin5k_Pperlin50k_mat2gray_2.mat"

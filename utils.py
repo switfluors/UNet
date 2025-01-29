@@ -25,8 +25,8 @@ def get_base_folder_name(model_name):
     elif model_name == 'all':
         model_name_folder = "all_models"
 
-    foldername = (f'OG_Perlin_mat2gray_{"norm" if config.NORMALIZATION else "notnorm"}' +
-                       f'{"_denorm" if config.DENORMALIZATION else "_"}{str(int(config.TRAINING_DATASET_SIZE / 1000))}' +
+    foldername = (f'OG_Perlin_mat2gray_{"norm" if config.NORMALIZATION else "notnorm"}_' +
+                       f'{str(int(config.TRAINING_DATASET_SIZE / 1000))}' +
                        f'k_{model_name_folder}_{str(config.EPOCHS)}epo_' +
                        f'{str(config.LEARNING_RATE)}lr_{str(config.WEIGHT_DECAY)}l2reg_bs{str(config.BATCH_SIZE)}' +
                        f'_stepsize{str(config.SCHEDULER_STEP_SIZE)}_' +

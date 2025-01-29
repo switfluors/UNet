@@ -5,19 +5,11 @@ import config
 import argparse
 import random
 import os
-from utils import get_base_folder_name, get_model_path_filename
+from utils import ignore_warnings, set_seed, get_base_folder_name, get_model_path_filename
 from models import UNet, AttentionUNet
 from dataset import get_train_test_datasets
 from train import train
 from test import test
-
-def set_seed(seed=42):
-    """Ensures reproducibility by setting random seeds."""
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
 
 def get_models():
     """Initialize the chosen model."""
@@ -33,6 +25,9 @@ def get_models():
     return models
 
 def main():
+
+    ignore_warnings()
+
     parser = argparse.ArgumentParser(description="Train or Test a UNet Model")
     parser.add_argument("--train", action="store_true", help="Train the model")
     parser.add_argument("--test", action="store_true", help="Test the model")
@@ -97,7 +92,7 @@ def main():
         os.chdir("..")
 
     if args.test:
-        _, test_loader, test_loader_notnorm = get_train_test_datasets()
+        _, test_loader, test_loader_notnorm, gt_spt_test = get_train_test_datasets()
 
         base_folder = get_base_folder_name(config.MODEL_TYPE)
         os.chdir(base_folder)
@@ -106,7 +101,7 @@ def main():
         for model_folder in models.keys():
             models[model_folder].load_state_dict(
                 torch.load(os.path.join(model_folder, get_model_path_filename(model_folder)), weights_only=False))
-        test(models, test_loader, test_loader_notnorm)
+        test(models, test_loader, test_loader_notnorm, gt_spt_test)
 
 if __name__ == "__main__":
     main()

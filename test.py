@@ -94,7 +94,7 @@ def save_rmse_figures(dataSets):
     # plt.show()
 
 
-def save_rep_samples(model_name, test_loader_notnorm, YPred, tbg4_test, sptimg4_test):
+def save_rep_samples(model_name, test_loader_notnorm, YPred, tbg4_test, sptimg4_test, gt_spt_test):
     indices = [0, 1, 2, 3, 4]
 
     fig, axes = plt.subplots(5, 5, figsize=(50, 15))
@@ -110,52 +110,63 @@ def save_rep_samples(model_name, test_loader_notnorm, YPred, tbg4_test, sptimg4_
     # Loop to plot all graphs
     for i, idx in enumerate(indices):
         predicted_background = YPred[idx, :, :].transpose(1, 0)
-        ground_truth = tbg4_test[idx, :, :].transpose(1, 0)
-        original_speimg = sptimg4_test[idx, :, :].transpose(1, 0)
-        # ground_truth_spectral_image = gt_spt_test[idx, :, :].transpose(1, 0)
+        ground_truth_background = tbg4_test[idx, :, :].transpose(1, 0)
+        original_spectral_image = sptimg4_test[idx, :, :].transpose(1, 0)
+        ground_truth_spectral_image = gt_spt_test[idx, :, :].transpose(1, 0)
 
-        if config.NORMALIZATION and config.DENORMALIZATION:
-            ground_truth = ground_truth * (tbg4_test_max - tbg4_test_min) + tbg4_test_min
-            predicted_background = predicted_background * (sptimg4_test_max - sptimg4_test_min) + sptimg4_test_min
-            original_speimg = original_speimg * (sptimg4_test_max - sptimg4_test_min) + sptimg4_test_min
+        predicted_spectral_image = original_spectral_image - predicted_background
 
-        predicted_spectral_image = original_speimg - predicted_background
-        ground_truth_spectral_image = original_speimg - ground_truth
-
-        if config.NORMALIZATION and config.DENORMALIZATION:
-            predicted_spectral_image = (predicted_spectral_image - np.min(predicted_spectral_image)) / \
-                                       (np.max(predicted_spectral_image) - np.min(predicted_spectral_image) + 1e-8)
         if idx == 1:
             print("Predicted Background {}".format(idx))
             print("Minimum Intensity: {}".format(np.min(predicted_background)))
             print("Maximum Intensity: {}".format(np.max(predicted_background)))
 
             print("Ground Truth Background {}".format(idx))
-            print("Minimum Intensity: {}".format(np.min(ground_truth)))
-            print("Maximum Intensity: {}".format(np.max(ground_truth)))
+            print("Minimum Intensity: {}".format(np.min(ground_truth_background)))
+            print("Maximum Intensity: {}".format(np.max(ground_truth_background)))
+
+            print("Predicted Spectral Image {}".format(idx))
+            print("Minimum Intensity: {}".format(np.min(predicted_spectral_image)))
+            print("Maximum Intensity: {}".format(np.max(predicted_spectral_image)))
+
+            print("Ground Truth Spectral Image {}".format(idx))
+            print("Minimum Intensity: {}".format(np.min(ground_truth_spectral_image)))
+            print("Maximum Intensity: {}".format(np.max(ground_truth_spectral_image)))
 
             print("Original Spectral Image {}".format(idx))
-            print("Minimum Intensity: {}".format(np.min(original_speimg)))
-            print("Maximum Intensity: {}".format(np.max(original_speimg)))
+            print("Minimum Intensity: {}".format(np.min(original_spectral_image)))
+            print("Maximum Intensity: {}".format(np.max(original_spectral_image)))
 
         ax = axes[i, 0]
-        ax.imshow(predicted_background, aspect='auto', cmap='gray')
+        if config.NORMALIZATION:
+            ax.imshow(predicted_background, aspect='auto', cmap='gray', vmin=0, vmax=1)
+        else:
+            ax.imshow(predicted_background, aspect='auto', cmap='gray')
         ax.set_title(f'Predicted Background {idx}')
 
         ax = axes[i, 1]
-        ax.imshow(ground_truth, aspect='auto', cmap='gray')
+        if config.NORMALIZATION:
+            ax.imshow(ground_truth_background, aspect='auto', cmap='gray', vmin=0, vmax=1)
+        else:
+            ax.imshow(ground_truth_background, aspect='auto', cmap='gray')
         ax.set_title(f'Ground Truth Background {idx}')
 
         ax = axes[i, 2]
-        ax.imshow(predicted_spectral_image, aspect='auto', cmap='gray')
+        if config.NORMALIZATION:
+            ax.imshow(predicted_spectral_image, aspect='auto', cmap='gray')
+        else:
+            ax.imshow(predicted_spectral_image, aspect='auto', cmap='gray')
         ax.set_title(f'Predicted Spectral Image {idx}')
 
         ax = axes[i, 3]
-        ax.imshow(ground_truth_spectral_image, aspect='auto', cmap='gray')
+        if config.NORMALIZATION:
+            ax.imshow(ground_truth_spectral_image, aspect='auto', cmap='gray')
+        else:
+            ax.imshow(ground_truth_spectral_image, aspect='auto', cmap='gray')
         ax.set_title(f'Ground Truth Spectral Image {idx}')
 
         ax = axes[i, 4]
-        ax.imshow(original_speimg, aspect='auto', cmap='gray')
+        ax.imshow(original_spectral_image, aspect='auto', cmap='gray')
         ax.set_title(f'Original Spectral Image {idx}')
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.95], pad=3.0)
@@ -163,10 +174,9 @@ def save_rep_samples(model_name, test_loader_notnorm, YPred, tbg4_test, sptimg4_
         plt.savefig("unet/convUNet_5_rep_samples.png")
     elif model_name == "attention_unet":
         plt.savefig("attention_unet/convUNet_Att_5_rep_samples.png")
-    pass
 
 
-def test(models, test_loader, test_loader_notnorm):
+def test(models, test_loader, test_loader_notnorm, gt_spt_test):
     """Evaluates both models on the test dataset and stores results."""
 
     (numSpectra, sptimg4_test, tbg4_test, YPred, Predictspe,
@@ -207,6 +217,7 @@ def test(models, test_loader, test_loader_notnorm):
     YPred2 = np.squeeze(YPred2, axis=1)
     Predictspe2 = np.squeeze(Predictspe2, axis=1)
     Oldsptimg = np.squeeze(Oldsptimg, axis=1)
+    gt_spt_test = np.squeeze(gt_spt_test, axis=1)
     mean_background = np.squeeze(mean_background, axis=0)
 
     sptn = np.mean(Predictspe[:, :, 6:10], axis=2)
@@ -222,8 +233,6 @@ def test(models, test_loader, test_loader_notnorm):
 
         # Interpolate at the points in xq and store the result in vq
         vq[i, :] = f(xq)
-
-    # print(vq.shape)
 
     sptimg4_test = np.squeeze(sptimg4_test, axis=1)
     rawspt = np.mean(sptimg4_test[:, :, 6:10], axis=2)
@@ -258,29 +267,21 @@ def test(models, test_loader, test_loader_notnorm):
         return np.sqrt(np.mean((predictions - targets) ** 2, axis=(1, 2)))
 
     ConvU_BG_RMSE = rmse(YPred, tbg4_test)
-    print(ConvU_BG_RMSE.shape)
     ConvU_SPE_RMSE = rmse(Predictspe, GTsptimg)
-    print(ConvU_SPE_RMSE.shape)
     ConvU_Att_BG_RMSE = rmse(YPred2, tbg4_test)
-    print(ConvU_Att_BG_RMSE.shape)
     ConvU_Att_SPE_RMSE = rmse(Predictspe2, GTsptimg)
-    print(ConvU_Att_SPE_RMSE.shape)
 
-    print("Mean bg:", mean_background.shape)
     Old_BG = np.tile(mean_background[np.newaxis, :, :], (numSpectra, 1, 1))
-    print(Old_BG.shape)
     Old_BG_RMSE = rmse(Old_BG, tbg4_test)
-    print(Old_BG_RMSE.shape)
     Old_SPE_RMSE = rmse(Oldsptimg, GTsptimg)
-    print(Old_SPE_RMSE.shape)
 
     # Plotting figures
 
     dataSets = [ConvU_Att_BG_RMSE, ConvU_Att_SPE_RMSE, ConvU_BG_RMSE, ConvU_SPE_RMSE, Old_BG_RMSE, Old_SPE_RMSE]
     save_rmse_figures(dataSets)
 
-    print("Conventional UNet")
-    save_rep_samples("unet", test_loader_notnorm, YPred, tbg4_test, sptimg4_test)
+    print("Conventional UNet\n")
+    save_rep_samples("unet", test_loader_notnorm, YPred, tbg4_test, sptimg4_test, gt_spt_test)
 
-    print("Conventional UNet with Attention")
-    save_rep_samples("attention_unet", test_loader_notnorm, YPred2, tbg4_test, sptimg4_test)
+    print("Conventional UNet with Attention\n")
+    save_rep_samples("attention_unet", test_loader_notnorm, YPred2, tbg4_test, sptimg4_test, gt_spt_test)
