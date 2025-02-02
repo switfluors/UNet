@@ -5,15 +5,14 @@ from datetime import datetime
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Metadata
-DATE = datetime.now().strftime("%m%d%Y")
+DATE = '02012025' # datetime.now().strftime("%m%d%Y")
 ITERATION = 0
 
 # Data settings
 DATA_NOISE = "Perlin" # options: "Gaussian", "Perlin"
 NORMALIZATION_TECH = "MatchNorm" # options: 'MatchNorm', 'mat2gray'
 NORMALIZATION = True
-DENORMALIZATION = False
-OUTPUT_SPECTRA = False
+OUTPUT_SPECTRA = True
 TRAINING_DATA_PATH = "../data/Training_Perlin40k_Pperlin50k_MatchNorm.mat"
 TESTING_DATA_PATH = "../data/Testing_Perlin5k_Pperlin50k_MatchNorm.mat"
 TRAINING_DATASET_SIZE = 40000
@@ -31,7 +30,7 @@ NUM_FIRST_FILTERS = 4
 # Training settings
 EPOCHS = 250
 LEARNING_RATE = 0.01 if not NORMALIZATION else 0.001
-WEIGHT_DECAY = 0.01 if not NORMALIZATION else 0.001
+WEIGHT_DECAY = 0.01 if not NORMALIZATION else 0.0001
 LOSS_FUNCTION = "mse" if not NORMALIZATION else "mae" # Options: "mse", "mae"
 OPTIMIZER = "adam"  # Options: "adam", "sgd"
 SCHEDULER_STEP_SIZE = 50

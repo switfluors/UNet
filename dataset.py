@@ -17,7 +17,6 @@ class CustomDataset(Dataset):
         return torch.tensor(self.X[idx], dtype=torch.float32), torch.tensor(self.Y[idx], dtype=torch.float32)
 
 def get_train_test_datasets():
-    test_dataset_notnorm = None
 
     with h5py.File(config.TRAINING_DATA_PATH) as matdata_train:
 
@@ -60,7 +59,6 @@ def get_train_test_datasets():
     else:
         with h5py.File(config.TESTING_DATA_PATH, 'r') as matdata:
             sptimg4_test_notnorm = matdata['sptimgPerlin'][:]
-            gt_spt_test_notnorm = matdata['GTspt'][:]
 
             if config.NORMALIZATION:
                 sptimg4_test_norm = matdata['normalized_sptimgPerlin'][:]
@@ -87,7 +85,6 @@ def get_train_test_datasets():
                 train_dataset = CustomDataset(sptimg4_train_notnorm, gt_spt_test)
                 test_dataset = CustomDataset(sptimg4_test_notnorm, gt_spt_test)
 
-            test_dataset_notnorm = CustomDataset(sptimg4_test_notnorm, gt_spt_test_notnorm)
         else:
             if config.NORMALIZATION:
                 train_dataset = CustomDataset(sptimg4_train_norm, tbg4_train_norm)
@@ -96,13 +93,11 @@ def get_train_test_datasets():
                 train_dataset = CustomDataset(sptimg4_train_notnorm, tbg4_train_notnorm)
                 test_dataset = CustomDataset(sptimg4_test_notnorm, tbg4_test_notnorm)
 
-            test_dataset_notnorm = CustomDataset(sptimg4_test_notnorm, tbg4_test_notnorm)
 
     train_loader = DataLoader(train_dataset, batch_size=config.BATCH_SIZE, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=config.BATCH_SIZE, shuffle=True)
-    test_loader_notnorm = DataLoader(test_dataset_notnorm, batch_size=config.BATCH_SIZE, shuffle=True)
 
-    return train_loader, test_loader, test_loader_notnorm, gt_spt_test
+    return train_loader, test_loader, gt_spt_test
 
 
 

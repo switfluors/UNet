@@ -3,6 +3,7 @@ import torch
 import numpy as np
 import random
 import config
+from models import UNet, AttentionUNet
 
 def ignore_warnings():
     warnings.filterwarnings('ignore')
@@ -61,3 +62,18 @@ def get_model_path_filename(model_name):
     #                       f'_stepsize{str(config.SCHEDULER_STEP_SIZE)}_' +
     #                       f'lrdecay{str(config.SCHEDULER_GAMMA)}_{str(config.TRAIN_TEST_SPLIT)}pc_train_split_{config.DATE}_'
     #                       f'{str(config.ITERATION)}.pth')
+
+
+def get_models():
+    """Initialize the chosen model."""
+    models = {}
+    if config.MODEL_TYPE not in ["unet", "attention_unet", "all"]:
+        raise ValueError("Invalid model type: {config.MODEL_TYPE}")
+
+    if config.MODEL_TYPE in ["unet", "all"]:
+        models["unet"] = UNet(config.INPUT_SIZE[0], config.NUM_LAYERS, config.NUM_FIRST_FILTERS).to(config.DEVICE)
+    if config.MODEL_TYPE in ["attention_unet", "all"]:
+        models["attention_unet"] = AttentionUNet(config.INPUT_SIZE[0], config.NUM_LAYERS, config.NUM_FIRST_FILTERS).to(config.DEVICE)
+    models_string = ", ".join(models.keys())
+    print("Available models: {}".format(models_string))
+    return models

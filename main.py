@@ -1,28 +1,13 @@
 import time
-import numpy as np
 import torch
 import config
 import argparse
-import random
 import os
-from utils import ignore_warnings, set_seed, get_base_folder_name, get_model_path_filename
-from models import UNet, AttentionUNet
+from utils import ignore_warnings, set_seed, get_base_folder_name, get_model_path_filename, get_models
 from dataset import get_train_test_datasets
 from train import train
-from test import test
-
-def get_models():
-    """Initialize the chosen model."""
-    models = {}
-    if config.MODEL_TYPE not in ["unet", "attention_unet", "all"]:
-        raise ValueError("Invalid model type: {config.MODEL_TYPE}")
-
-    if config.MODEL_TYPE in ["unet", "all"]:
-        models["unet"] = UNet(config.INPUT_SIZE[0], config.NUM_LAYERS, config.NUM_FIRST_FILTERS).to(config.DEVICE)
-    if config.MODEL_TYPE in ["attention_unet", "all"]:
-        models["attention_unet"] = AttentionUNet(config.INPUT_SIZE[0], config.NUM_LAYERS, config.NUM_FIRST_FILTERS).to(config.DEVICE)
-    print(models.keys())
-    return models
+import test_background
+import test_spectra
 
 def main():
 
@@ -45,12 +30,12 @@ def main():
 
         training_times = {}
 
-        train_loader, test_loader, _, _ = get_train_test_datasets()
+        train_loader, test_loader, _ = get_train_test_datasets()
         models = get_models()
 
         base_folder = get_base_folder_name(config.MODEL_TYPE)
 
-        print("Creating folder ", base_folder)
+        print("Creating folder for training: ", base_folder)
         os.makedirs(base_folder, exist_ok=True)
         os.chdir(base_folder)
 
@@ -94,16 +79,24 @@ def main():
         os.chdir("..")
 
     if args.test:
-        _, test_loader, test_loader_notnorm, gt_spt_test = get_train_test_datasets()
+
+        _, test_loader, gt_spt_test = get_train_test_datasets()
 
         base_folder = get_base_folder_name(config.MODEL_TYPE)
         os.chdir(base_folder)
+
+        print("Accessing test folder: {}".format(base_folder))
 
         models = get_models()
         for model_folder in models.keys():
             models[model_folder].load_state_dict(
                 torch.load(os.path.join(model_folder, get_model_path_filename(model_folder)), weights_only=False))
-        test(models, test_loader, test_loader_notnorm, gt_spt_test)
+        if config.OUTPUT_SPECTRA:
+            test_spectra.test(models, test_loader)
+        else:
+            test_background.test(models, test_loader, gt_spt_test)
+
+
 
 if __name__ == "__main__":
     main()

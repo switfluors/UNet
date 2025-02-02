@@ -60,11 +60,18 @@ def save_rmse_figures(dataSets):
 
     filteredDataSets = [data[data <= 15] for data in dataSets]  # Filter values greater than 15
 
+    maxValue = max([data.max() for data in filteredDataSets if len(data) > 0], default=1)
+
     # Define global bin edges for the range 0-15
-    if not config.NORMALIZATION:
-        binEdges = np.linspace(0, 15, 31)  # 30 bins from 0 to 15
-    else:
-        binEdges = np.linspace(0, 1, 31)
+    buffer = 0
+    binEdges = np.linspace(0, (1 + buffer) * maxValue, 31)
+
+    # if not config.NORMALIZATION:
+    #     binEdges = np.linspace(0, 15, 31)  # 30 bins from 0 to 15
+    # else:
+    #     binEdges = np.linspace(0, 1, 31)
+
+    precision = ".5f" if config.NORMALIZATION else ".2f"
 
     # Loop through each filtered dataset to create subplot histograms with mean and std annotations
     for i, filtered_data in enumerate(filteredDataSets):
@@ -75,11 +82,11 @@ def save_rmse_figures(dataSets):
         stdVal = np.std(filtered_data)
 
         # Mean and standard deviation lines
-        plt.axvline(meanVal, color='red', linestyle='-', linewidth=2, label=f'Mean: {meanVal:.2f}')
+        plt.axvline(meanVal, color='red', linestyle='-', linewidth=2, label=f'Mean: {meanVal:{precision}}')
         plt.axvline(meanVal + stdVal, color='blue', linestyle='--', linewidth=2,
-                    label=f'+1 Std: {meanVal + stdVal:.2f}')
+                    label=f'+1 Std: {meanVal + stdVal:{precision}}')
         plt.axvline(meanVal - stdVal, color='blue', linestyle='--', linewidth=2,
-                    label=f'-1 Std: {meanVal - stdVal:.2f}')
+                    label=f'-1 Std: {meanVal - stdVal:{precision}}')
 
         plt.title(titles[i])
         plt.xlabel('RMSE Value')
@@ -94,7 +101,7 @@ def save_rmse_figures(dataSets):
     # plt.show()
 
 
-def save_rep_samples(model_name, test_loader_notnorm, YPred, tbg4_test, sptimg4_test, gt_spt_test):
+def save_rep_samples(model_name, YPred, tbg4_test, sptimg4_test, gt_spt_test):
     indices = [0, 1, 2, 3, 4]
 
     fig, axes = plt.subplots(5, 5, figsize=(50, 15))
@@ -106,12 +113,6 @@ def save_rep_samples(model_name, test_loader_notnorm, YPred, tbg4_test, sptimg4_
         fig.suptitle(
             'Attention UNet: 5 Representative Predicted Background, Ground Truth, Predicted Spectral, and Original Speimg Image Samples',
             fontsize=48, fontweight='bold')
-
-    sptimg4_test_notnorm = test_loader_notnorm.dataset.X
-    tbg4_test_notnorm = test_loader_notnorm.dataset.Y
-
-    tbg4_test_max, tbg4_test_min = np.max(tbg4_test_notnorm), np.min(tbg4_test_notnorm)
-    sptimg4_test_max, sptimg4_test_min = np.max(sptimg4_test_notnorm), np.min(sptimg4_test_notnorm)
 
     # Loop to plot all graphs
     for i, idx in enumerate(indices):
@@ -182,7 +183,7 @@ def save_rep_samples(model_name, test_loader_notnorm, YPred, tbg4_test, sptimg4_
         plt.savefig("attention_unet/convUNet_Att_5_rep_samples.png")
 
 
-def test(models, test_loader, test_loader_notnorm, gt_spt_test):
+def test(models, test_loader, gt_spt_test):
     """Evaluates both models on the test dataset and stores results."""
 
     (numSpectra, sptimg4_test, tbg4_test, YPred, Predictspe,
@@ -287,7 +288,7 @@ def test(models, test_loader, test_loader_notnorm, gt_spt_test):
     save_rmse_figures(dataSets)
 
     print("Conventional UNet\n")
-    save_rep_samples("unet", test_loader_notnorm, YPred, tbg4_test, sptimg4_test, gt_spt_test)
+    save_rep_samples("unet", YPred, tbg4_test, sptimg4_test, gt_spt_test)
 
     print("Conventional UNet with Attention\n")
-    save_rep_samples("attention_unet", test_loader_notnorm, YPred2, tbg4_test, sptimg4_test, gt_spt_test)
+    save_rep_samples("attention_unet", YPred2, tbg4_test, sptimg4_test, gt_spt_test)
