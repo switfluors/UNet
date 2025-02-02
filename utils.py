@@ -25,13 +25,23 @@ def get_base_folder_name(model_name):
     elif model_name == 'all':
         model_name_folder = "all_models"
 
-    foldername = (f'OG_Perlin_mat2gray_{"norm" if config.NORMALIZATION else "notnorm"}_' +
-                       f'{str(int(config.TRAINING_DATASET_SIZE / 1000))}' +
-                       f'k_{model_name_folder}_{str(config.EPOCHS)}epo_' +
-                       f'{str(config.LEARNING_RATE)}lr_{str(config.WEIGHT_DECAY)}l2reg_bs{str(config.BATCH_SIZE)}' +
-                       f'_stepsize{str(config.SCHEDULER_STEP_SIZE)}_' +
-                       f'lrdecay{str(config.SCHEDULER_GAMMA)}_{str(config.TRAIN_TEST_SPLIT)}pc_train_split_{config.DATE}_'
-                       f'{str(config.ITERATION)}')
+    foldername = (f'OG_' +
+                  f'{config.DATA_NOISE}_' +
+                  f'{config.NORMALIZATION_TECH}_' +
+                  f'{config.DATE}_' +
+                  f'{"out_spectra" if config.OUTPUT_SPECTRA else "out_background"}_'
+                  f'{"norm" if config.NORMALIZATION else "notnorm"}_' +
+                  f'{str(int(config.TRAINING_DATASET_SIZE / 1000))}k_' +
+                  f'{model_name_folder}_' +
+                  f'{str(config.EPOCHS)}epo_' +
+                  f'{str(config.LEARNING_RATE)}lr_' +
+                  f'{str(config.WEIGHT_DECAY)}l2reg_' +
+                  f'{str(config.BATCH_SIZE)}bs_' +
+                  f'{str(config.SCHEDULER_STEP_SIZE)}stepsize_' +
+                  f'{str(config.SCHEDULER_GAMMA)}lrdecay_' +
+                  f'{config.LOSS_FUNCTION}loss_' +
+                  f'{str(config.TRAIN_TEST_SPLIT)}pc_train_split_' +
+                  f'{str(config.ITERATION)}')
     return foldername
 
 def get_model_path_filename(model_name):

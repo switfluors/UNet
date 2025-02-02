@@ -45,10 +45,12 @@ def main():
 
         training_times = {}
 
-        train_loader, test_loader, _ = get_train_test_datasets()
+        train_loader, test_loader, _, _ = get_train_test_datasets()
         models = get_models()
 
         base_folder = get_base_folder_name(config.MODEL_TYPE)
+
+        print("Creating folder ", base_folder)
         os.makedirs(base_folder, exist_ok=True)
         os.chdir(base_folder)
 

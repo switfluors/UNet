@@ -23,25 +23,34 @@ def get_train_test_datasets():
 
         sptimg4_train_notnorm = matdata_train['sptimgPerlin'][:]
         tbg4_train_notnorm = matdata_train['tbgPerlin'][:]
+        GTspt_train_notnorm = matdata_train['GTspt'][:]
 
         if config.NORMALIZATION:
             sptimg4_train_norm = matdata_train['normalized_sptimgPerlin'][:]
             tbg4_train_norm = matdata_train['normalized_tbgPerlin'][:]
+            GTspt_train_norm = matdata_train['normalized_GTspt'][:]
 
     sptimg4_train_notnorm = np.expand_dims(sptimg4_train_notnorm, axis=1)
     tbg4_train_notnorm = np.expand_dims(tbg4_train_notnorm, axis=1)
+    GTspt_train_notnorm = np.expand_dims(GTspt_train_notnorm, axis=1)
 
     if config.NORMALIZATION:
         sptimg4_train_norm = np.expand_dims(sptimg4_train_norm, axis=1)
         tbg4_train_norm = np.expand_dims(tbg4_train_norm, axis=1)
+        GTspt_train_norm = np.expand_dims(GTspt_train_norm, axis=1)
 
 
     if config.TESTING_DATASET_SIZE == 0:
-
-        if config.NORMALIZATION:
-            data = CustomDataset(sptimg4_train_norm, tbg4_train_norm)
+        if config.OUTPUT_SPECTRA:
+            if config.NORMALIZATION:
+                data = CustomDataset(sptimg4_train_norm, GTspt_train_norm)
+            else:
+                data = CustomDataset(sptimg4_train_notnorm, GTspt_train_notnorm)
         else:
-            data = CustomDataset(sptimg4_train_notnorm, tbg4_train_notnorm)
+            if config.NORMALIZATION:
+                data = CustomDataset(sptimg4_train_norm, tbg4_train_norm)
+            else:
+                data = CustomDataset(sptimg4_train_notnorm, tbg4_train_notnorm)
 
         train_size = round(config.TRAIN_TEST_SPLIT * len(data))
         test_size = len(data) - train_size
@@ -50,14 +59,15 @@ def get_train_test_datasets():
 
     else:
         with h5py.File(config.TESTING_DATA_PATH, 'r') as matdata:
+            sptimg4_test_notnorm = matdata['sptimgPerlin'][:]
+            gt_spt_test_notnorm = matdata['GTspt'][:]
+
             if config.NORMALIZATION:
                 sptimg4_test_norm = matdata['normalized_sptimgPerlin'][:]
                 tbg4_test_norm = matdata['normalized_tbgPerlin'][:]
-                sptimg4_test_notnorm = matdata['sptimgPerlin'][:]
                 tbg4_test_notnorm = matdata['tbgPerlin'][:]
                 gt_spt_test = matdata['normalized_GTspt'][:]
             else:
-                sptimg4_test_notnorm = matdata['sptimgPerlin'][:]
                 tbg4_test_notnorm = matdata['tbgPerlin'][:]
                 gt_spt_test = matdata['GTspt'][:]
 
@@ -69,14 +79,24 @@ def get_train_test_datasets():
             sptimg4_test_norm = np.expand_dims(sptimg4_test_norm, axis=1)
             tbg4_test_norm = np.expand_dims(tbg4_test_norm, axis=1)
 
-        if config.NORMALIZATION:
-            train_dataset = CustomDataset(sptimg4_train_norm, tbg4_train_norm)
-            test_dataset = CustomDataset(sptimg4_test_norm, tbg4_test_norm)
-        else:
-            train_dataset = CustomDataset(sptimg4_train_notnorm, tbg4_train_notnorm)
-            test_dataset = CustomDataset(sptimg4_test_notnorm, tbg4_test_notnorm)
+        if config.OUTPUT_SPECTRA:
+            if config.NORMALIZATION:
+                train_dataset = CustomDataset(sptimg4_train_norm, gt_spt_test)
+                test_dataset = CustomDataset(sptimg4_test_norm, gt_spt_test)
+            else:
+                train_dataset = CustomDataset(sptimg4_train_notnorm, gt_spt_test)
+                test_dataset = CustomDataset(sptimg4_test_notnorm, gt_spt_test)
 
-        test_dataset_notnorm = CustomDataset(sptimg4_test_notnorm, tbg4_test_notnorm)
+            test_dataset_notnorm = CustomDataset(sptimg4_test_notnorm, gt_spt_test_notnorm)
+        else:
+            if config.NORMALIZATION:
+                train_dataset = CustomDataset(sptimg4_train_norm, tbg4_train_norm)
+                test_dataset = CustomDataset(sptimg4_test_norm, tbg4_test_norm)
+            else:
+                train_dataset = CustomDataset(sptimg4_train_notnorm, tbg4_train_notnorm)
+                test_dataset = CustomDataset(sptimg4_test_notnorm, tbg4_test_notnorm)
+
+            test_dataset_notnorm = CustomDataset(sptimg4_test_notnorm, tbg4_test_notnorm)
 
     train_loader = DataLoader(train_dataset, batch_size=config.BATCH_SIZE, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=config.BATCH_SIZE, shuffle=True)

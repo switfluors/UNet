@@ -98,8 +98,14 @@ def save_rep_samples(model_name, test_loader_notnorm, YPred, tbg4_test, sptimg4_
     indices = [0, 1, 2, 3, 4]
 
     fig, axes = plt.subplots(5, 5, figsize=(50, 15))
-    fig.suptitle(
-        '5 Representative Predicted Background, Ground Truth, Predicted Spectral, and Original Speimg Image Samples')
+    if model_name == "unet":
+        fig.suptitle(
+            'Conventional UNet: 5 Representative Predicted Background, Ground Truth, Predicted Spectral, and Original Speimg Image Samples',
+            fontsize=48, fontweight='bold')
+    elif model_name == "attention_unet":
+        fig.suptitle(
+            'Attention UNet: 5 Representative Predicted Background, Ground Truth, Predicted Spectral, and Original Speimg Image Samples',
+            fontsize=48, fontweight='bold')
 
     sptimg4_test_notnorm = test_loader_notnorm.dataset.X
     tbg4_test_notnorm = test_loader_notnorm.dataset.Y
@@ -139,35 +145,35 @@ def save_rep_samples(model_name, test_loader_notnorm, YPred, tbg4_test, sptimg4_
 
         ax = axes[i, 0]
         if config.NORMALIZATION:
-            ax.imshow(predicted_background, aspect='auto', cmap='gray', vmin=0, vmax=1)
+            ax.imshow(predicted_background, aspect='auto', cmap='gray', vmin=0, vmax=0.25)
         else:
             ax.imshow(predicted_background, aspect='auto', cmap='gray')
-        ax.set_title(f'Predicted Background {idx}')
+        ax.set_title(f'Predicted Background {idx}', fontsize=32)
 
         ax = axes[i, 1]
         if config.NORMALIZATION:
-            ax.imshow(ground_truth_background, aspect='auto', cmap='gray', vmin=0, vmax=1)
+            ax.imshow(ground_truth_background, aspect='auto', cmap='gray', vmin=0, vmax=0.25)
         else:
             ax.imshow(ground_truth_background, aspect='auto', cmap='gray')
-        ax.set_title(f'Ground Truth Background {idx}')
+        ax.set_title(f'Ground Truth Background {idx}', fontsize=32)
 
         ax = axes[i, 2]
         if config.NORMALIZATION:
             ax.imshow(predicted_spectral_image, aspect='auto', cmap='gray')
         else:
             ax.imshow(predicted_spectral_image, aspect='auto', cmap='gray')
-        ax.set_title(f'Predicted Spectral Image {idx}')
+        ax.set_title(f'Predicted Spectral Image {idx}', fontsize=32)
 
         ax = axes[i, 3]
         if config.NORMALIZATION:
             ax.imshow(ground_truth_spectral_image, aspect='auto', cmap='gray')
         else:
             ax.imshow(ground_truth_spectral_image, aspect='auto', cmap='gray')
-        ax.set_title(f'Ground Truth Spectral Image {idx}')
+        ax.set_title(f'Ground Truth Spectral Image {idx}', fontsize=32)
 
         ax = axes[i, 4]
         ax.imshow(original_spectral_image, aspect='auto', cmap='gray')
-        ax.set_title(f'Original Spectral Image {idx}')
+        ax.set_title(f'Original Spectral Image {idx}', fontsize=32)
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.95], pad=3.0)
     if model_name == "unet":
