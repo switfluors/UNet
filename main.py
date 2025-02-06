@@ -3,11 +3,12 @@ import torch
 import config
 import argparse
 import os
-from utils import ignore_warnings, set_seed, get_base_folder_name, get_model_path_filename, get_models
+from utils import ignore_warnings, set_seed, get_base_folder_name, get_model_path_filename, get_models, log_print
 from dataset import get_train_test_datasets
 from train import train
 import test_background
 import test_spectra
+from logger import get_logger
 
 def main():
 
@@ -34,13 +35,13 @@ def main():
         models = get_models()
 
         base_folder = get_base_folder_name(config.MODEL_TYPE)
-
-        print("Creating folder for training: ", base_folder)
         os.makedirs(base_folder, exist_ok=True)
         os.chdir(base_folder)
+        logger = get_logger("Main")
+        log_print(logger, "Creating folder for training: ", base_folder)
 
         for model_name, model in models.items():
-            print(f"\nTraining {model_name}...\n")
+            log_print(logger, f"\nTraining {model_name}...\n")
 
             # Create subdirectory for each model
             os.makedirs(model_name, exist_ok=True)
@@ -67,14 +68,14 @@ def main():
 
             # Train model
             start_time = time.time()
-            train(model_name, model, train_loader, test_loader, criterion, optimizer, scheduler)
+            train(model_name, model, train_loader, test_loader, criterion, optimizer, scheduler, logger)
             end_time = time.time()
 
             training_times[model_name] = end_time - start_time
             # Move back to base directory
             os.chdir("..")
 
-        print(training_times)
+        log_print(logger, f"Training times: {training_times}")
 
         os.chdir("..")
 

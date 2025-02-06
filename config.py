@@ -5,18 +5,19 @@ from datetime import datetime
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Metadata
-DATE = '02012025' # datetime.now().strftime("%m%d%Y")
-ITERATION = 0
+DATE = datetime.now().strftime("%m%d%Y")
+ITERATION = 1
 
 # Data settings
 DATA_NOISE = "Perlin" # options: "Gaussian", "Perlin"
 NORMALIZATION_TECH = "MatchNorm" # options: 'MatchNorm', 'mat2gray'
 NORMALIZATION = True
-OUTPUT_SPECTRA = True
-TRAINING_DATA_PATH = "../data/Training_Perlin40k_Pperlin50k_MatchNorm.mat"
-TESTING_DATA_PATH = "../data/Testing_Perlin5k_Pperlin50k_MatchNorm.mat"
-TRAINING_DATASET_SIZE = 40000
+OUTPUT_SPECTRA = False
+TRAINING_DATASET_SIZE = 80000
+P_NOISE = 100000
 TESTING_DATASET_SIZE = 5000
+TRAINING_DATA_PATH = f"../data/Training_{DATA_NOISE}{TRAINING_DATASET_SIZE // 1000}k_Pperlin{P_NOISE // 1000}k_{NORMALIZATION_TECH}.mat"
+TESTING_DATA_PATH = f"../data/Testing_{DATA_NOISE}{TESTING_DATASET_SIZE // 1000}k_Pperlin{P_NOISE // 1000}k_{NORMALIZATION_TECH}.mat"
 TRAIN_TEST_SPLIT = 0.80
 BATCH_SIZE = 50
 NUM_WORKERS = 4  # Adjust based on your system's resources

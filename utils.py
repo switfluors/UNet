@@ -4,6 +4,7 @@ import numpy as np
 import random
 import config
 from models import UNet, AttentionUNet
+import logging
 
 def ignore_warnings():
     warnings.filterwarnings('ignore')
@@ -30,9 +31,10 @@ def get_base_folder_name(model_name):
                   f'{config.DATA_NOISE}_' +
                   f'{config.NORMALIZATION_TECH}_' +
                   f'{config.DATE}_' +
-                  f'{"out_spectra" if config.OUTPUT_SPECTRA else "out_background"}_'
+                  f'{"out_spectra" if config.OUTPUT_SPECTRA else "out_background"}_' +
                   f'{"norm" if config.NORMALIZATION else "notnorm"}_' +
-                  f'{str(int(config.TRAINING_DATASET_SIZE / 1000))}k_' +
+                  f'{str(config.TRAINING_DATASET_SIZE // 1000)}k_' +
+                  f'P{config.DATA_NOISE.lower()}{str(config.P_NOISE // 1000)}k_' +
                   f'{model_name_folder}_' +
                   f'{str(config.EPOCHS)}epo_' +
                   f'{str(config.LEARNING_RATE)}lr_' +
@@ -77,3 +79,10 @@ def get_models():
     models_string = ", ".join(models.keys())
     print("Available models: {}".format(models_string))
     return models
+
+def log_print(logger, *args, **kwargs):
+    """
+    Prints and logs the message using the provided logger.
+    """
+    message = " ".join(str(arg) for arg in args)  # Convert args to string
+    logger.info(message)  # Log the message

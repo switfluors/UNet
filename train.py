@@ -3,6 +3,7 @@ import torch
 from utils import get_model_path_filename
 import numpy as np
 import matplotlib.pyplot as plt
+from utils import log_print
 
 def save_loss_graphs(model_name, training_loss_epochs, testing_loss_epochs):
     x_labels = np.arange(1, config.EPOCHS)
@@ -26,7 +27,7 @@ def save_loss_graphs(model_name, training_loss_epochs, testing_loss_epochs):
     np.save(f'{model_name}_testing_losses.npy', np.array(testing_losses))
 
 
-def train(model_name, model, train_loader, test_loader, criterion, optimizer, scheduler):
+def train(model_name, model, train_loader, test_loader, criterion, optimizer, scheduler, logger):
 
     training_loss_epochs = []
     testing_loss_epochs = []
@@ -49,7 +50,7 @@ def train(model_name, model, train_loader, test_loader, criterion, optimizer, sc
 
         training_loss_epoch = training_loss / len(train_loader.dataset)
 
-        print(f"Epoch [{epoch + 1}/{config.EPOCHS}], Training Loss: {training_loss_epoch}")
+        log_print(logger, f"Epoch [{epoch + 1}/{config.EPOCHS}], Training Loss: {training_loss_epoch}")
 
         model.eval()
         testing_loss = 0.0
@@ -61,7 +62,7 @@ def train(model_name, model, train_loader, test_loader, criterion, optimizer, sc
                 testing_loss += criterion(outputs, targets).item() * inputs.size(0)
 
         testing_loss_epoch = testing_loss / len(test_loader.dataset)
-        print(f"Epoch [{epoch + 1}/{config.EPOCHS}], Testing Loss: {testing_loss_epoch}")
+        log_print(logger, f"Epoch [{epoch + 1}/{config.EPOCHS}], Testing Loss: {testing_loss_epoch}")
 
         model.train()
         scheduler.step()
@@ -73,6 +74,6 @@ def train(model_name, model, train_loader, test_loader, criterion, optimizer, sc
 
     save_loss_graphs(model_name, training_loss_epochs, testing_loss_epochs)
 
-    print("Training complete!")
+    log_print(logger, "Training complete!")
 
     return model
