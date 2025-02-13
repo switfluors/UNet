@@ -18,7 +18,7 @@ def set_seed(seed=42):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-def get_base_folder_name(model_name):
+def get_base_folder_name(model_name, args):
     model_name_folder = None
     if model_name == 'unet':
         model_name_folder = "conv_UNet_model"
@@ -28,21 +28,21 @@ def get_base_folder_name(model_name):
         model_name_folder = "all_models"
 
     foldername = (f'OG_' +
-                  f'{config.DATA_NOISE}_' +
+                  f'{args.noise_type}_' +
                   f'{config.NORMALIZATION_TECH}_' +
                   f'{config.DATE}_' +
                   f'{"out_spectra" if config.OUTPUT_SPECTRA else "out_background"}_' +
                   f'{"norm" if config.NORMALIZATION else "notnorm"}_' +
-                  f'{str(config.TRAINING_DATASET_SIZE // 1000)}k_' +
-                  f'P{config.DATA_NOISE.lower()}{str(config.P_NOISE // 1000)}k_' +
+                  f'{str(args.train_dataset_size // 1000)}k_' +
+                  f'P{args.noise_type.lower()}{str(args.noise_level // 1000)}k_' +
                   f'{model_name_folder}_' +
-                  f'{str(config.EPOCHS)}epo_' +
-                  f'{str(config.LEARNING_RATE)}lr_' +
-                  f'{str(config.WEIGHT_DECAY)}l2reg_' +
-                  f'{str(config.BATCH_SIZE)}bs_' +
-                  f'{str(config.SCHEDULER_STEP_SIZE)}stepsize_' +
-                  f'{str(config.SCHEDULER_GAMMA)}lrdecay_' +
-                  f'{config.LOSS_FUNCTION}loss_' +
+                  f'{str(args.epochs)}epo_' +
+                  f'{str(args.lr)}lr_' +
+                  f'{str(args.weight_decay)}l2reg_' +
+                  f'{str(args.bs)}bs_' +
+                  f'{str(args.scheduler_step_size)}stepsize_' +
+                  f'{str(args.scheduler_gamma)}lrdecay_' +
+                  f'{args.loss_fn.upper()}loss_' +
                   f'{str(config.TRAIN_TEST_SPLIT)}pc_train_split_' +
                   f'{str(config.ITERATION)}')
     return foldername

@@ -5,8 +5,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from utils import log_print
 
-def save_loss_graphs(model_name, training_loss_epochs, testing_loss_epochs):
-    x_labels = np.arange(1, config.EPOCHS)
+def save_loss_graphs(model_name, training_loss_epochs, testing_loss_epochs, args):
+    x_labels = np.arange(1, args.epochs)
     training_losses = training_loss_epochs[1:]  # Ignore 1st epoch
     testing_losses = testing_loss_epochs[1:]
     plt.figure(figsize=(10, 6))
@@ -27,13 +27,13 @@ def save_loss_graphs(model_name, training_loss_epochs, testing_loss_epochs):
     np.save(f'{model_name}_testing_losses.npy', np.array(testing_losses))
 
 
-def train(model_name, model, train_loader, test_loader, criterion, optimizer, scheduler, logger):
+def train(model_name, model, train_loader, test_loader, criterion, optimizer, scheduler, logger, args):
 
     training_loss_epochs = []
     testing_loss_epochs = []
 
     # Training loop
-    for epoch in range(config.EPOCHS):
+    for epoch in range(args.epochs):
         model.train()
         training_loss = 0.0
 
@@ -50,7 +50,7 @@ def train(model_name, model, train_loader, test_loader, criterion, optimizer, sc
 
         training_loss_epoch = training_loss / len(train_loader.dataset)
 
-        log_print(logger, f"Epoch [{epoch + 1}/{config.EPOCHS}], Training Loss: {training_loss_epoch}")
+        log_print(logger, f"Epoch [{epoch + 1}/{args.epochs}], Training Loss: {training_loss_epoch}")
 
         model.eval()
         testing_loss = 0.0
@@ -62,7 +62,7 @@ def train(model_name, model, train_loader, test_loader, criterion, optimizer, sc
                 testing_loss += criterion(outputs, targets).item() * inputs.size(0)
 
         testing_loss_epoch = testing_loss / len(test_loader.dataset)
-        log_print(logger, f"Epoch [{epoch + 1}/{config.EPOCHS}], Testing Loss: {testing_loss_epoch}")
+        log_print(logger, f"Epoch [{epoch + 1}/{args.epochs}], Testing Loss: {testing_loss_epoch}")
 
         model.train()
         scheduler.step()
@@ -72,7 +72,7 @@ def train(model_name, model, train_loader, test_loader, criterion, optimizer, sc
 
     torch.save(model.state_dict(), get_model_path_filename(model_name))
 
-    save_loss_graphs(model_name, training_loss_epochs, testing_loss_epochs)
+    save_loss_graphs(model_name, training_loss_epochs, testing_loss_epochs, args)
 
     log_print(logger, "Training complete!")
 

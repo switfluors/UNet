@@ -2,5 +2,6 @@ data/
 *.pth
 *.png
 *.npy
+*.txt
 .idea
 __pycache__/
