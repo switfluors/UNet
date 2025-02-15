@@ -3,5 +3,7 @@ data/
 *.png
 *.npy
 *.txt
+!.gitignore
+!requirements.txt
 .idea
 __pycache__/
