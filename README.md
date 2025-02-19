@@ -17,8 +17,8 @@ datasets, changing hyperparameters, and more.
 
 ## Project Structure
 ```
-├── .idea/
-├── __pycache__/
+├── .idea/                   # Miscellaneous folder (used by IDE)
+├── __pycache__/             # Miscellaneous folder (used by Python)
 ├── data/                    # Folder to store all datasets (not in this repository)
 ├── test_models/             # Folder for saving trained models and test results (not in this repository)
 ├── README.md                # Project documentation (This file)
@@ -53,7 +53,7 @@ The overall structure can be visualized in the image below:
 ### Spatial Attention UNet
 
 From this conventional UNet, we added a spatial attention mechanism to each of the upsampling layers, proposed from the `Attention U-Net:
-Learning Where to Look for the Pancreas` paper. 
+Learning Where to Look for the Pancreas` paper, cited in the [Acknowledgments](#acknowledgments) section below.
 
 The overall structure can be visualized in the image below:
 
