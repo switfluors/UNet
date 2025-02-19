@@ -17,8 +17,10 @@ datasets, changing hyperparameters, and more.
 
 ## Project Structure
 ```
-├── data/                    # Folder to store all datasets 
-├── test_models/             # Folder for saving trained models and test results
+├── .idea/
+├── __pycache__/
+├── data/                    # Folder to store all datasets (not in this repository)
+├── test_models/             # Folder for saving trained models and test results (not in this repository)
 ├── README.md                # Project documentation (This file)
 ├── main.py                  # Main script to run training or testing
 ├── config.py                # Configuration settings, hyperparameters, and paths
@@ -35,15 +37,37 @@ datasets, changing hyperparameters, and more.
 
 ## Models
 
+Currently, the following models have been added for training/testing to this repository:
+
 ### Conventional UNet
 
+The conventional UNet structure takes a given image with dimensions of `16x128` and applies the following transformations:
+- 4 Downsampling Blocks
+- Bottleneck
+- 4 Upsampling Blocks
+- Final Convolutional Layer and Relu
+
+The overall structure can be visualized in the image below:
+![Conventional UNet Structure](conventional_unet_structure.png)
+
 ### Spatial Attention UNet
+
+From this conventional UNet, we added a spatial attention mechanism to each of the upsampling layers, proposed from the `Attention U-Net:
+Learning Where to Look for the Pancreas` paper. 
+
+The overall structure can be visualized in the image below:
 
 ## Setup
 
 1. First, please `git clone` the repository to your local machine,
 making sure you are in the current working directory of the folder you cloned to.
 2. Next, run `pip -r requirements.txt` to download the required Python packages and repositories.
+
+At the moment, the current Python libraries are being used:
+- `h5py`: For importing MATLAB data files `.mat` to Python
+- `torch`: For training Python models with the dataset
+- `matplotlib`: For general data visualization
+- `numpy`: For data manipulation
 
 ## Usage
 
@@ -127,3 +151,19 @@ Special thanks to Dr. Chau-Wai Wong for his special advice to implement spatial 
 the UNet structure.
 
 ## Acknowledgments
+
+We used the following papers for our implementation, cited using BibTeX:
+
+1. Spatial Attention
+
+```
+@misc{oktay2018attentionunetlearninglook,
+      title={Attention U-Net: Learning Where to Look for the Pancreas}, 
+      author={Ozan Oktay and Jo Schlemper and Loic Le Folgoc and Matthew Lee and Mattias Heinrich and Kazunari Misawa and Kensaku Mori and Steven McDonagh and Nils Y Hammerla and Bernhard Kainz and Ben Glocker and Daniel Rueckert},
+      year={2018},
+      eprint={1804.03999},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/1804.03999}, 
+}
+```
