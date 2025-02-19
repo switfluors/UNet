@@ -18,10 +18,14 @@ class CustomDataset(Dataset):
 
 def get_train_test_datasets(args):
 
+    NOISE_SCALE_STR = f"_Scale{args.noise_scale}_" if args.noise_scale != 1 else "_"
+
     TRAINING_DATA_PATH = (f"../data/Training_{args.noise_type}{args.train_dataset_size // 1000}k_"
-                          f"P{args.noise_type.lower()}{args.noise_level // 1000}k_{config.NORMALIZATION_TECH}.mat")
+                          f"P{args.noise_type.lower()}{args.noise_level // 1000}k{NOISE_SCALE_STR}"
+                          f"{config.NORMALIZATION_TECH}.mat")
     TESTING_DATA_PATH = (f"../data/Testing_{args.noise_type}{args.test_dataset_size // 1000}k_"
-                         f"P{args.noise_type.lower()}{args.noise_level // 1000}k_{config.NORMALIZATION_TECH}.mat")
+                         f"P{args.noise_type.lower()}{args.noise_level // 1000}k{NOISE_SCALE_STR}"
+                         f"{config.NORMALIZATION_TECH}.mat")
 
     with h5py.File(TRAINING_DATA_PATH) as matdata_train:
 
@@ -56,7 +60,7 @@ def get_train_test_datasets(args):
             else:
                 data = CustomDataset(sptimg4_train_notnorm, tbg4_train_notnorm)
 
-        train_size = round(config.TRAIN_TEST_SPLIT * len(data))
+        train_size = round(args.train_test_split * len(data))
         test_size = len(data) - train_size
 
         train_dataset, test_dataset = random_split(data, [train_size, test_size])

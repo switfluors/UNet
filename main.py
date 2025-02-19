@@ -27,13 +27,22 @@ def main():
     parser.add_argument("--scheduler_gamma", default=0.2, type=float, help="Schedule gamma")
     parser.add_argument("--train_dataset_size", required=True, type=int, help="Train dataset size")
     parser.add_argument("--test_dataset_size", default=5000, type=int, help="Test dataset size")
+    parser.add_argument("--train_test_split", default=0, type=float, help="Train test split")
     parser.add_argument("--noise_level", required=True, type=int, help="Dataset size noise level")
     parser.add_argument("--noise_type", default="Perlin", type=str, help="Noise type")
+    parser.add_argument("--noise_scale", default=1, type=int, help="Noise scale factor")
+    parser.add_argument("--model_type", default="attention_unet", type=str, help="Model type (attention_unet, unet, all)")
     args = parser.parse_args()
 
     # Ensure a valid mode is selected
     if not args.train and not args.test:
         parser.error("No action specified, add --train or --test")
+
+    if args.train_test_split < 0 or args.train_test_split > 1:
+        parser.error("Train and test split must be between 0 and 1")
+
+    if (args.train_test_split > 0 and args.test_dataset_size > 0) or (args.train_test_split == 0 and args.test_dataset_size == 0):
+        parser.error("You must choose either a test dataset size of 0 or train_test_split of 0")
 
     set_seed(config.SEED)
 
@@ -44,9 +53,9 @@ def main():
         training_times = {}
 
         train_loader, test_loader, _ = get_train_test_datasets(args)
-        models = get_models()
+        models = get_models(args)
 
-        base_folder = get_base_folder_name(config.MODEL_TYPE, args)
+        base_folder = get_base_folder_name(args.model_type, args)
         os.makedirs(base_folder, exist_ok=True)
         os.chdir(base_folder)
         logger = get_logger("Main")
@@ -95,19 +104,19 @@ def main():
 
         _, test_loader, gt_spt_test = get_train_test_datasets(args)
 
-        base_folder = get_base_folder_name(config.MODEL_TYPE, args)
+        base_folder = get_base_folder_name(args.model_type, args)
         os.chdir(base_folder)
 
         print("Accessing test folder: {}".format(base_folder))
 
-        models = get_models()
+        models = get_models(args)
         for model_folder in models.keys():
             models[model_folder].load_state_dict(
                 torch.load(os.path.join(model_folder, get_model_path_filename(model_folder)), weights_only=False))
         if config.OUTPUT_SPECTRA:
-            test_spectra.test(models, test_loader)
+            test_spectra.test(models, test_loader, args)
         else:
-            test_background.test(models, test_loader, gt_spt_test)
+            test_background.test(models, test_loader, gt_spt_test, args)
 
 
 

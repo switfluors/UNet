@@ -23,18 +23,21 @@ def get_base_folder_name(model_name, args):
     if model_name == 'unet':
         model_name_folder = "conv_UNet_model"
     elif model_name == 'attention_unet':
-        model_name_folder = "conv_att_UNet_model"
+        model_name_folder = "att_UNet_model"
     elif model_name == 'all':
         model_name_folder = "all_models"
 
+    TRAIN_TEST_SPLIT_STR = f'{str(args.train_test_split)}pc_train_split_' if args.train_test_split > 0 else '_'
+    MODEL_PREDICT_STR = f'{"out_SPEC" if config.OUTPUT_SPECTRA else "out_BG"}_'
     foldername = (f'OG_' +
-                  f'{args.noise_type}_' +
-                  f'{config.NORMALIZATION_TECH}_' +
                   f'{config.DATE}_' +
-                  f'{"out_spectra" if config.OUTPUT_SPECTRA else "out_background"}_' +
-                  f'{"norm" if config.NORMALIZATION else "notnorm"}_' +
+                  f'{args.noise_type}_' +
                   f'{str(args.train_dataset_size // 1000)}k_' +
                   f'P{args.noise_type.lower()}{str(args.noise_level // 1000)}k_' +
+                  f'Scale{args.noise_scale}_' +
+                  f'{"norm" if config.NORMALIZATION else "notnorm"}_' +
+                  f'{config.NORMALIZATION_TECH}_' +
+                  MODEL_PREDICT_STR +
                   f'{model_name_folder}_' +
                   f'{str(args.epochs)}epo_' +
                   f'{str(args.lr)}lr_' +
@@ -42,8 +45,8 @@ def get_base_folder_name(model_name, args):
                   f'{str(args.bs)}bs_' +
                   f'{str(args.scheduler_step_size)}stepsize_' +
                   f'{str(args.scheduler_gamma)}lrdecay_' +
-                  f'{args.loss_fn.upper()}loss_' +
-                  f'{str(config.TRAIN_TEST_SPLIT)}pc_train_split_' +
+                  f'{args.loss_fn.upper()}loss' +
+                  TRAIN_TEST_SPLIT_STR +
                   f'{str(config.ITERATION)}')
     return foldername
 
@@ -66,15 +69,15 @@ def get_model_path_filename(model_name):
     #                       f'{str(config.ITERATION)}.pth')
 
 
-def get_models():
+def get_models(args):
     """Initialize the chosen model."""
     models = {}
-    if config.MODEL_TYPE not in ["unet", "attention_unet", "all"]:
-        raise ValueError("Invalid model type: {config.MODEL_TYPE}")
+    if args.model_type not in ["unet", "attention_unet", "all"]:
+        raise ValueError("Invalid model type: {args.MODEL_TYPE}")
 
-    if config.MODEL_TYPE in ["unet", "all"]:
+    if args.model_type in ["unet", "all"]:
         models["unet"] = UNet(config.INPUT_SIZE[0], config.NUM_LAYERS, config.NUM_FIRST_FILTERS).to(config.DEVICE)
-    if config.MODEL_TYPE in ["attention_unet", "all"]:
+    if args.model_type in ["attention_unet", "all"]:
         models["attention_unet"] = AttentionUNet(config.INPUT_SIZE[0], config.NUM_LAYERS, config.NUM_FIRST_FILTERS).to(config.DEVICE)
     models_string = ", ".join(models.keys())
     print("Available models: {}".format(models_string))

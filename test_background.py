@@ -28,22 +28,18 @@ def prepare_arrays(test_loader):
 
 def save_rmse_figures(dataSets):
     # First figure
-    plt.figure(figsize=(12, 8))
+    plt.figure(figsize=(4 * (1 + len(dataSets)), 8))
 
     # Subplot titles
     titles = [
         'Conv. Att. U-Net Background RMSE',
-        'Conv. Att. U-Net Spectra RMSE',
         'Conventional U-net Background RMSE',
-        'Conventional U-net Spectra RMSE',
-        'Old Method Background RMSE',
-        'Old Method Spectra RMSE'
     ]
 
     # Create subplots for each RMSE
     for i, rmse_data in enumerate(
             dataSets):
-        plt.subplot(3, 2, i + 1)
+        plt.subplot(len(dataSets), 1, i + 1)
         plt.hist(rmse_data, bins=30, color='blue', alpha=0.7)
         plt.title(titles[i])
         plt.xlabel('RMSE Value')
@@ -56,7 +52,7 @@ def save_rmse_figures(dataSets):
     # plt.show()  # Display the figure
 
     # Second figure (with filtering)
-    plt.figure(figsize=(12, 8))
+    plt.figure(figsize=((4 * (1 + len(dataSets)), 4)))
 
     filteredDataSets = [data[data <= 15] for data in dataSets]  # Filter values greater than 15
 
@@ -75,7 +71,7 @@ def save_rmse_figures(dataSets):
 
     # Loop through each filtered dataset to create subplot histograms with mean and std annotations
     for i, filtered_data in enumerate(filteredDataSets):
-        plt.subplot(3, 2, i + 1)  # Set subplot position
+        plt.subplot(len(dataSets), 1, i + 1)  # Set subplot position
         plt.hist(filtered_data, bins=binEdges, color='green', alpha=0.7)  # Plot histogram with defined bin edges
 
         meanVal = np.mean(filtered_data)
@@ -183,11 +179,11 @@ def save_rep_samples(model_name, YPred, tbg4_test, sptimg4_test, gt_spt_test):
         plt.savefig("attention_unet/convUNet_Att_5_rep_samples.png")
 
 
-def test(models, test_loader, gt_spt_test):
+def test(models, test_loader, gt_spt_test, args):
     """Evaluates both models on the test dataset and stores results."""
 
     (numSpectra, sptimg4_test, tbg4_test, YPred, Predictspe,
-     YPred2, Predictspe2, Oldsptimg, mean_background) = prepare_arrays(test_loader)
+     YPred2, Predictspe2, _, _) = prepare_arrays(test_loader)
 
     # Set models to evaluation mode
     for model in models.values():
@@ -201,94 +197,108 @@ def test(models, test_loader, gt_spt_test):
     for n in range(numSpectra):
         input = torch.tensor(sptimg4_test[n:n + 1], dtype=torch.float32).to(device)
 
-        start_time = time.time()
-        conv_UNet_output = models["unet"](input).detach().cpu().numpy()
-        end_time = time.time()
-        inference_time_unet += end_time - start_time
+        if "unet" in models:
+            start_time = time.time()
+            conv_UNet_output = models["unet"](input).detach().cpu().numpy()
+            end_time = time.time()
+            inference_time_unet += end_time - start_time
+            YPred[n, :, :, :] = conv_UNet_output
+            Predictspe[n, :, :, :] = sptimg4_test[n, :, :, :] - YPred[n, :, :, :]
 
-        YPred[n, :, :, :] = conv_UNet_output
-        Predictspe[n, :, :, :] = sptimg4_test[n, :, :, :] - YPred[n, :, :, :]
+        if "attention_unet" in models:
+            start_time = time.time()
+            conv_att_UNet_output = models["attention_unet"](input).detach().cpu().numpy()
+            end_time = time.time()
+            inference_time_unet_att += end_time - start_time
+            YPred2[n, :, :, :] = conv_att_UNet_output
+            Predictspe2[n, :, :, :] = sptimg4_test[n, :, :, :] - YPred2[n, :, :, :]
 
-        start_time = time.time()
-        conv_att_UNet_output = models["attention_unet"](input).detach().cpu().numpy()
-        end_time = time.time()
-        inference_time_unet_att += end_time - start_time
-        YPred2[n, :, :, :] = conv_att_UNet_output
-        Predictspe2[n, :, :, :] = sptimg4_test[n, :, :, :] - YPred2[n, :, :, :]
-
-        Oldsptimg[n, :, :, :] = sptimg4_test[n, :, :, :] - mean_background
+        # Oldsptimg[n, :, :, :] = sptimg4_test[n, :, :, :] - mean_background
 
     print("Average inference time (in seconds): ", {'unet': inference_time_unet / numSpectra, 'attention_unet': inference_time_unet_att / numSpectra})
-    YPred = np.squeeze(YPred, axis=1)
-    Predictspe = np.squeeze(Predictspe, axis=1)
-    YPred2 = np.squeeze(YPred2, axis=1)
-    Predictspe2 = np.squeeze(Predictspe2, axis=1)
-    Oldsptimg = np.squeeze(Oldsptimg, axis=1)
+
+    if "unet" in models:
+        YPred = np.squeeze(YPred, axis=1)
+        Predictspe = np.squeeze(Predictspe, axis=1)
+    if "attention_unet" in models:
+        YPred2 = np.squeeze(YPred2, axis=1)
+        Predictspe2 = np.squeeze(Predictspe2, axis=1)
+
+    # Oldsptimg = np.squeeze(Oldsptimg, axis=1)
     gt_spt_test = np.squeeze(gt_spt_test, axis=1)
-    mean_background = np.squeeze(mean_background, axis=0)
+    # mean_background = np.squeeze(mean_background, axis=0)
 
-    sptn = np.mean(Predictspe[:, :, 6:10], axis=2)
+    # sptn = np.mean(Predictspe[:, :, 6:10], axis=2)
 
-    xq = np.arange(1, 128, 128 / 303)
-    x = np.arange(1, 129)
 
-    vq = np.zeros((numSpectra, 301))
-
-    for i in range(sptn.shape[0]):
-        # Create an interpolation function for the current row
-        f = interp1d(x, sptn[i, :], kind='linear', fill_value="extrapolate")
-
-        # Interpolate at the points in xq and store the result in vq
-        vq[i, :] = f(xq)
-
+    # xq = np.arange(1, 128, 128 / 303)
+    # x = np.arange(1, 129)
+    #
+    # vq = np.zeros((numSpectra, 301))
+    #
+    # for i in range(sptn.shape[0]):
+    #     # Create an interpolation function for the current row
+    #     f = interp1d(x, sptn[i, :], kind='linear', fill_value="extrapolate")
+    #
+    #     # Interpolate at the points in xq and store the result in vq
+    #     vq[i, :] = f(xq)
+    #
     sptimg4_test = np.squeeze(sptimg4_test, axis=1)
-    rawspt = np.mean(sptimg4_test[:, :, 6:10], axis=2)
-    rawspt_new = np.zeros((numSpectra, 301))
-
-    for i in range(rawspt.shape[0]):
-        f = interp1d(x, rawspt[i, :], kind='linear', fill_value="extrapolate")
-        rawspt_new[i, :] = f(xq)
-
-    rawspt = rawspt_new
+    # rawspt = np.mean(sptimg4_test[:, :, 6:10], axis=2)
+    # rawspt_new = np.zeros((numSpectra, 301))
+    #
+    # for i in range(rawspt.shape[0]):
+    #     f = interp1d(x, rawspt[i, :], kind='linear', fill_value="extrapolate")
+    #     rawspt_new[i, :] = f(xq)
+    #
+    # rawspt = rawspt_new
 
     tbg4_test = np.squeeze(tbg4_test, axis=1)
     GTsptimg = sptimg4_test - tbg4_test
-    GTspt = np.mean(GTsptimg[:, :, 6:10], axis=2)
-    GTspt_new = np.zeros((numSpectra, 301))
-    for i in range(GTspt.shape[0]):
-        f = interp1d(x, GTspt[i, :], kind='linear', fill_value="extrapolate")
-        GTspt_new[i, :] = f(xq)
 
-    GTspt = GTspt_new
+    # GTspt = np.mean(GTsptimg[:, :, 6:10], axis=2)
+    # GTspt_new = np.zeros((numSpectra, 301))
+    # for i in range(GTspt.shape[0]):
+    #     f = interp1d(x, GTspt[i, :], kind='linear', fill_value="extrapolate")
+    #     GTspt_new[i, :] = f(xq)
+    #
+    # GTspt = GTspt_new
 
-    Oldspt = np.mean(Oldsptimg[:, :, 6:10], axis=2)
-    Oldspt_new = np.zeros((numSpectra, 301))
-    for i in range(Oldspt.shape[0]):
-        f = interp1d(x, Oldspt[i, :], kind='linear', fill_value="extrapolate")
-        Oldspt_new[i, :] = f(xq)
-
-    Oldspt = Oldspt_new
+    # Oldspt = np.mean(Oldsptimg[:, :, 6:10], axis=2)
+    # Oldspt_new = np.zeros((numSpectra, 301))
+    # for i in range(Oldspt.shape[0]):
+    #     f = interp1d(x, Oldspt[i, :], kind='linear', fill_value="extrapolate")
+    #     Oldspt_new[i, :] = f(xq)
+    #
+    # Oldspt = Oldspt_new
 
     def rmse(predictions, targets):
         """Calculate the RMSE between predictions and targets."""
         return np.sqrt(np.mean((predictions - targets) ** 2, axis=(1, 2)))
 
-    ConvU_BG_RMSE = rmse(YPred, tbg4_test)
-    ConvU_SPE_RMSE = rmse(Predictspe, GTsptimg)
-    ConvU_Att_BG_RMSE = rmse(YPred2, tbg4_test)
-    ConvU_Att_SPE_RMSE = rmse(Predictspe2, GTsptimg)
+    if "unet" in models:
+        ConvU_BG_RMSE = rmse(YPred, tbg4_test)
+    # ConvU_SPE_RMSE = rmse(Predictspe, GTsptimg)
+    if "attention_unet" in models:
+        ConvU_Att_BG_RMSE = rmse(YPred2, tbg4_test)
+    # ConvU_Att_SPE_RMSE = rmse(Predictspe2, GTsptimg)
 
-    Old_BG = np.tile(mean_background[np.newaxis, :, :], (numSpectra, 1, 1))
-    Old_BG_RMSE = rmse(Old_BG, tbg4_test)
-    Old_SPE_RMSE = rmse(Oldsptimg, GTsptimg)
+    # Old_BG = np.tile(mean_background[np.newaxis, :, :], (numSpectra, 1, 1))
+    # Old_BG_RMSE = rmse(Old_BG, tbg4_test)
+    # Old_SPE_RMSE = rmse(Oldsptimg, GTsptimg)
 
     # Plotting figures
 
-    dataSets = [ConvU_Att_BG_RMSE, ConvU_Att_SPE_RMSE, ConvU_BG_RMSE, ConvU_SPE_RMSE, Old_BG_RMSE, Old_SPE_RMSE]
+    dataSets = []
+    if "attention_unet" in models:
+        dataSets.append(ConvU_Att_BG_RMSE)
+    if "unet" in models:
+        dataSets.append(ConvU_BG_RMSE)
     save_rmse_figures(dataSets)
 
-    print("Conventional UNet\n")
-    save_rep_samples("unet", YPred, tbg4_test, sptimg4_test, gt_spt_test)
-
-    print("Conventional UNet with Attention\n")
-    save_rep_samples("attention_unet", YPred2, tbg4_test, sptimg4_test, gt_spt_test)
+    if "unet" in models:
+        print("Conventional UNet\n")
+        save_rep_samples("unet", YPred, tbg4_test, sptimg4_test, gt_spt_test)
+    if "attention_unet" in models:
+        print("Conventional UNet with Attention\n")
+        save_rep_samples("attention_unet", YPred2, tbg4_test, sptimg4_test, gt_spt_test)
