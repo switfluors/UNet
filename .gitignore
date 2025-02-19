@@ -1,6 +1,7 @@
 data/
 *.pth
 *.png
+!conventional_unet_structure.png
 *.npy
 *.txt
 !.gitignore
